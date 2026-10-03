@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+.coverage
+htmlcov/
+
+# Local Home Assistant config for running check_config by hand
+/ha/
+
+.idea/
+.vscode/
+.claude/settings.local.json
+
+# Local assistant notes, never published
+CLAUDE.md
+.claude/
+.ruff_cache/

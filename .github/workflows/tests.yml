@@ -1,0 +1,32 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    name: pytest (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Declared minimum (blueprint.homeassistant.min_version)
+          - name: "HA 2026.7"
+            python: "3.14"
+            ha_constraint: "homeassistant>=2026.7.0,<2026.8.0"
+          # Latest stable
+          - name: "HA latest"
+            python: "3.14"
+            ha_constraint: "homeassistant"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install "${{ matrix.ha_constraint }}" pytest-homeassistant-custom-component pytest-timeout pyyaml
+      - run: pytest -v --timeout=60

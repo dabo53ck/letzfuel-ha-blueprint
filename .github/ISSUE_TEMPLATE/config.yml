@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: LëtzFuel HA integration issues
+    url: https://github.com/dabo53ck/letzfuel-ha-luxembourg-fuel-monitor/issues
+    about: Wrong prices, missing sensors or events are a matter for the integration, not this blueprint.

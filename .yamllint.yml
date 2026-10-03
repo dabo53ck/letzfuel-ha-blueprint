@@ -1,0 +1,12 @@
+extends: relaxed
+
+rules:
+  line-length: disable
+  document-start: disable
+  comments: disable
+  comments-indentation: disable
+  key-duplicates: enable
+  trailing-spaces: enable
+  truthy:
+    allowed-values: ["true", "false"]
+    check-keys: false

@@ -1,0 +1,53 @@
+name: Validate
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+jobs:
+  static:
+    name: yamllint + static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - run: pip install pyyaml yamllint
+      - run: yamllint -c .yamllint.yml blueprints tests/fixtures .github
+      - run: python scripts/validate_blueprints.py
+
+  check-config:
+    name: HA check_config (${{ matrix.ha }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Declared minimum (blueprint.homeassistant.min_version) and latest stable
+        ha: ["2026.7.4", "stable"]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build a minimal Home Assistant config
+        run: |
+          mkdir -p ha/blueprints/automation/dabo53ck
+          cp blueprints/automation/dabo53ck/*.yaml ha/blueprints/automation/dabo53ck/
+          cp tests/fixtures/check_config/automations.yaml ha/automations.yaml
+          cat > ha/configuration.yaml <<'EOF'
+          homeassistant:
+            name: CI
+            latitude: 0
+            longitude: 0
+            elevation: 0
+            unit_system: metric
+            time_zone: UTC
+          automation: !include automations.yaml
+          EOF
+      - name: check_config
+        run: >
+          docker run --rm -v "$PWD/ha:/config"
+          ghcr.io/home-assistant/home-assistant:${{ matrix.ha }}
+          python -m homeassistant --script check_config -c /config

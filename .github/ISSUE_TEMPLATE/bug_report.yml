@@ -1,0 +1,58 @@
+name: Bug report
+description: The blueprint does not behave as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Wrong prices, missing sensors or events belong to the
+        [LëtzFuel HA integration](https://github.com/dabo53ck/letzfuel-ha-luxembourg-fuel-monitor/issues).
+        Everything about this blueprint is welcome here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: input
+    id: integration_version
+    attributes:
+      label: LëtzFuel HA version
+      description: Shown in HACS.
+    validations:
+      required: true
+  - type: input
+    id: blueprint_version
+    attributes:
+      label: Blueprint version
+      description: Shown in the badge at the top of the blueprint description, for example `v0.1.0`.
+    validations:
+      required: true
+  - type: textarea
+    id: trace
+    attributes:
+      label: Automation trace
+      description: >
+        Settings → Automations and scenes → your automation → ⋮ → Traces. Pick the
+        run in question, open **Download trace** and paste the JSON.
+      render: json
+  - type: textarea
+    id: config
+    attributes:
+      label: Automation configuration
+      description: ⋮ → Edit in YAML. Remove anything private.
+      render: yaml
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues.
+          required: true

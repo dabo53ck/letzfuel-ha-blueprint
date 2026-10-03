@@ -1,0 +1,53 @@
+# Drives the blueprint with every input set. `check_config` (see
+# .github/workflows/validate.yml) generates the automation from the blueprint,
+# which catches broken templates, selectors and unresolved !input references.
+# A new blueprint input must be added here.
+- alias: LëtzFuel HA Blueprint (CI fixture)
+  id: letzfuel_ha_blueprint_ci
+  use_blueprint:
+    path: dabo53ck/letzfuel_ha_blueprint.yaml
+    input:
+      notify_language: de
+      reminder_enabled: true
+      reminder_devices:
+        - 0123456789abcdef0123456789abcdef
+      reminder_trackers: [person.alex, device_tracker.car]
+      reminder_zones: [zone.home, zone.work]
+      reminder_moving: [binary_sensor.car_moving]
+      reminder_times: "07:30, 16:45"
+      reminder_level_entity: sensor.car_fuel_level
+      reminder_level_below: 40
+      reminder_done_helper: input_boolean.refuelled_today
+      reminder_snooze_minutes: 45
+      reminder_priority: elevated
+      reminder_title: Fuel
+      reminder_message: "{fuel}: {today} / {tomorrow} ({change}), {saving} €"
+      reminder_actions:
+        - action: persistent_notification.create
+          data:
+            message: "{{ message }}"
+      nav_mode: place
+      nav_place:
+        latitude: 49.61
+        longitude: 6.13
+      nav_app: waze
+      events_fuels: [primary, sp95]
+      events_min_delta: 0.02
+      announced_actions:
+        - action: persistent_notification.create
+          data:
+            message: "{{ message }}"
+      effective_actions:
+        - action: persistent_notification.create
+          data:
+            message: "{{ message }}"
+      rec_states: [refuel_today, wait, no_change]
+      rec_actions:
+        - action: persistent_notification.create
+          data:
+            message: "{{ recommendation }}"
+      threshold_below: 1.7
+      threshold_actions:
+        - action: persistent_notification.create
+          data:
+            message: "{{ fuel }} {{ price }}"

@@ -1,0 +1,852 @@
+blueprint:
+  name: LëtzFuel HA Blueprint
+  description: >-
+    ![Version](https://img.shields.io/badge/version-v0.1.0-blue) &nbsp;&nbsp;&nbsp; [![GitHub](https://img.shields.io/badge/GitHub-Repository-black)](https://github.com/dabo53ck/letzfuel-ha-blueprint) &nbsp;&nbsp;&nbsp; [![Issues](https://img.shields.io/badge/Issues-red)](https://github.com/dabo53ck/letzfuel-ha-blueprint/issues)
+
+
+    Adds what the [LëtzFuel HA](https://github.com/dabo53ck/letzfuel-ha-luxembourg-fuel-monitor)
+    integration's own notifications don't do. Needs LëtzFuel HA 0.1.1 or
+    newer.
+
+
+    **Refuel reminder**: while the recommendation is "Refuel today", remind
+    you when it matters: when you leave a place, when the car starts moving
+    or at set times, with the buttons *Refuelled*, *Later* and *Navigate*.
+
+
+    **Own actions**: run any actions (Telegram, a script, a light) on the
+    integration's events: price announced or corrected, new price in effect,
+    recommendation changed, price below a target.
+
+
+    Full documentation:
+    https://github.com/dabo53ck/letzfuel-ha-blueprint#readme
+  domain: automation
+  author: dabo53ck
+  source_url: https://github.com/dabo53ck/letzfuel-ha-blueprint/blob/main/blueprints/automation/dabo53ck/letzfuel_ha_blueprint.yaml
+  homeassistant:
+    min_version: "2026.7.0"
+
+  input:
+    language:
+      name: Language
+      icon: mdi:translate
+      input:
+        notify_language:
+          name: Language
+          description: >-
+            Language of the reminder, its buttons and the built-in `title` and
+            `message` your own actions get. Separate from Home Assistant's own
+            UI language; blueprint input labels (like this one) are always
+            English.
+          default: en
+          selector:
+            select:
+              options:
+                - { label: English, value: en }
+                - { label: Deutsch, value: de }
+                - { label: Français, value: fr }
+                - { label: Lëtzebuergesch, value: lb }
+                - { label: Português, value: pt }
+                - { label: Italiano, value: it }
+
+    reminder:
+      name: Refuel reminder
+      icon: mdi:gas-station
+      collapsed: true
+      input:
+        reminder_enabled:
+          name: Enable
+          description: >-
+            Reminds you while the refuel recommendation is "Refuel today", on
+            the occasions below. Pick at least one.
+          default: false
+          selector:
+            boolean: {}
+        reminder_devices:
+          name: Devices
+          description: Phones or tablets with the Home Assistant Companion app that get the reminder.
+          default: []
+          selector:
+            device:
+              filter:
+                integration: mobile_app
+              multiple: true
+        reminder_trackers:
+          name: "When leaving: people or trackers"
+          description: >-
+            Remind when one of these leaves one of the places below, for
+            example you leaving work, or the car's tracker leaving home.
+          default: []
+          selector:
+            entity:
+              domain: [person, device_tracker]
+              multiple: true
+        reminder_zones:
+          name: "When leaving: places"
+          description: >-
+            Leaving one of these counts, wherever the person or tracker goes
+            next. Arriving doesn't. Without places, leaving never reminds.
+          default: []
+          selector:
+            entity:
+              domain: zone
+              multiple: true
+        reminder_moving:
+          name: When the car starts moving
+          description: >-
+            A sensor that turns on when the car is driving or its ignition is
+            on, if your car integration has one.
+          default: []
+          selector:
+            entity:
+              domain: binary_sensor
+              multiple: true
+        reminder_times:
+          name: At these times
+          description: >-
+            Times as HH:MM, separated by commas, for example `19:00, 21:30`.
+            "Refuel today" only runs from the evening announcement until
+            midnight, so evening times make sense. Leave empty for none.
+          default: ""
+          selector:
+            text: {}
+        reminder_level_entity:
+          name: Only when the tank is low (optional)
+          description: >-
+            A sensor or number with the tank fill level in percent (0-100),
+            for example the integration's own fuel level. Once you have
+            refuelled, the level is up and the reminders stop on their own.
+          default: []
+          selector:
+            entity:
+              domain: [sensor, number, input_number]
+        reminder_level_below:
+          name: Tank level below
+          description: >-
+            Remind only while the tank level is below this. Without a value
+            from the sensor the reminder comes anyway.
+          default: 50
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+              mode: slider
+        reminder_done_helper:
+          name: Refuelled-today helper (optional)
+          description: >-
+            A Toggle helper (`input_boolean`) you create yourself under
+            Settings → Devices and services → Helpers. *Refuelled* turns it on and
+            stops the reminders for the day; it turns off again when the next
+            "Refuel today" starts. Without it and without a fuel level,
+            every occasion above reminds you again.
+          default: []
+          selector:
+            entity:
+              domain: input_boolean
+        reminder_snooze_minutes:
+          name: Later button delay
+          description: How long *Later* waits before reminding again. 0 = no *Later* button.
+          default: 60
+          selector:
+            number:
+              min: 0
+              max: 480
+              step: 5
+              unit_of_measurement: min
+              mode: box
+        reminder_priority:
+          name: Priority
+          description: Elevated is time-sensitive; Critical bypasses Do Not Disturb.
+          default: normal
+          selector:
+            select:
+              options:
+                - { label: Normal, value: normal }
+                - { label: Elevated, value: elevated }
+                - { label: "Critical (bypass Do Not Disturb)", value: critical }
+        reminder_title:
+          name: Own title (optional)
+          description: Leave empty for the built-in title.
+          default: ""
+          selector:
+            text: {}
+        reminder_message:
+          name: Own message (optional)
+          description: >-
+            Leave empty for the built-in message. Placeholders: `{fuel}`,
+            `{today}`, `{tomorrow}`, `{change}`, `{saving}`.
+          default: ""
+          selector:
+            text:
+              multiline: true
+        reminder_actions:
+          name: Own actions (optional)
+          description: >-
+            Run once per occasion, before the first notification, not again
+            for *Later*. The variables `notification_type` (`reminder`),
+            `title` and `message` are available.
+          default: []
+          selector:
+            action: {}
+
+    navigation:
+      name: Navigate button
+      icon: mdi:map-marker-path
+      collapsed: true
+      input:
+        nav_mode:
+          name: Navigate to
+          description: Adds a *Navigate* button to the reminder.
+          default: "off"
+          selector:
+            select:
+              options:
+                - { label: "Off (no button)", value: "off" }
+                - { label: Petrol stations nearby, value: nearby }
+                - { label: My petrol station, value: place }
+        nav_place:
+          name: My petrol station
+          description: >-
+            Only for "My petrol station". Pick it on the map; without a place
+            there is no button.
+          default: {}
+          selector:
+            location: {}
+        nav_app:
+          name: Maps app
+          description: Google Maps and Waze work on iPhone and Android, Apple Maps only on iPhone.
+          default: google
+          selector:
+            select:
+              options:
+                - { label: Google Maps, value: google }
+                - { label: Apple Maps, value: apple }
+                - { label: Waze, value: waze }
+
+    own_actions:
+      name: Own actions on the integration's events
+      icon: mdi:play-box-multiple-outline
+      collapsed: true
+      input:
+        events_fuels:
+          name: Fuels
+          description: >-
+            Which fuels the price events and the price target are about.
+            "Primary fuel" follows the integration.
+          default: [primary]
+          selector:
+            select:
+              multiple: true
+              options:
+                - { label: Primary fuel, value: primary }
+                - { label: Diesel, value: diesel }
+                - { label: SP95 (E10), value: sp95 }
+                - { label: SP98, value: sp98 }
+        events_min_delta:
+          name: Minimum change
+          description: Ignore price moves smaller than this (€/L). 0 = any change.
+          default: 0
+          selector:
+            number:
+              min: 0
+              max: 0.5
+              step: 0.001
+              unit_of_measurement: €/L
+              mode: box
+        announced_actions:
+          name: Price announced for tomorrow (and its corrections)
+          description: >-
+            Variables: `notification_type` (`announced` or `corrected`),
+            `title`, `message`, `changes`.
+          default: []
+          selector:
+            action: {}
+        effective_actions:
+          name: New price in effect
+          description: "Variables: `notification_type` (`effective`), `title`, `message`, `changes`."
+          default: []
+          selector:
+            action: {}
+        rec_states:
+          name: "Recommendation changed: to these states"
+          description: The own actions below run when the recommendation changes to one of these.
+          default: [refuel_today]
+          selector:
+            select:
+              multiple: true
+              options:
+                - { label: Refuel today, value: refuel_today }
+                - { label: Wait, value: wait }
+                - { label: No change, value: no_change }
+        rec_actions:
+          name: Recommendation changed
+          description: >-
+            Variables: `notification_type` (`recommendation`), `title`,
+            `message`, `recommendation` (the new state).
+          default: []
+          selector:
+            action: {}
+        threshold_below:
+          name: "Price below: target (€/L)"
+          description: 0 = off.
+          default: 0
+          selector:
+            number:
+              min: 0
+              max: 5
+              step: 0.001
+              unit_of_measurement: €/L
+              mode: box
+        threshold_actions:
+          name: Price below the target
+          description: >-
+            Runs once when a price drops below the target, and again only
+            after it has gone back above it. Variables: `notification_type`
+            (`threshold`), `title`, `message`, `fuel`, `price`.
+          default: []
+          selector:
+            action: {}
+
+mode: parallel
+max: 20
+max_exceeded: silent
+
+triggers:
+  - trigger: state
+    id: leave
+    entity_id: !input reminder_trackers
+    not_from: [unavailable, unknown]
+    not_to: [unavailable, unknown]
+  - trigger: state
+    id: moving
+    entity_id: !input reminder_moving
+    from: "off"
+    to: "on"
+  # Template instead of `time`: a time trigger can't take a free list of
+  # times. A template that calls now() is re-rendered at the start of every
+  # minute, so it only calls it when there are times at all.
+  - trigger: template
+    id: time
+    value_template: >-
+      {% set ns = namespace(v=[]) %}
+      {% for t in (reminder_times | string).split(',') %}
+        {% set t = t | trim %}
+        {% if t != '' %}
+          {% set ns.v = ns.v + [('0' ~ t) if t.split(':')[0] | length == 1 else t] %}
+        {% endif %}
+      {% endfor %}
+      {% if ns.v | count > 0 %}{{ now().strftime('%H:%M') in ns.v }}{% else %}false{% endif %}
+  - trigger: state
+    id: recommend
+    entity_id: sensor.letzfuel_ha_refuel_recommendation
+    # A failed refresh makes the sensor `unavailable`; going there and coming
+    # back is not a change of recommendation.
+    not_from: [unavailable, unknown]
+    not_to: [unavailable, unknown]
+  - trigger: event
+    id: announced
+    event_type: letzfuel_ha_price_change_announced
+  - trigger: event
+    id: corrected
+    event_type: letzfuel_ha_price_change_corrected
+  - trigger: event
+    id: effective
+    event_type: letzfuel_ha_price_changed
+  # `template` instead of `numeric_state`: not every fuel is necessarily
+  # tracked, and a numeric_state trigger errors at load time if its entity
+  # doesn't exist. A template just renders false until the sensor appears.
+  - trigger: template
+    id: threshold_diesel
+    value_template: >-
+      {{ below > 0 and has_value('sensor.letzfuel_ha_diesel_price')
+         and states('sensor.letzfuel_ha_diesel_price') | float < below }}
+  - trigger: template
+    id: threshold_sp95
+    value_template: >-
+      {{ below > 0 and has_value('sensor.letzfuel_ha_sp95_e10_price')
+         and states('sensor.letzfuel_ha_sp95_e10_price') | float < below }}
+  - trigger: template
+    id: threshold_sp98
+    value_template: >-
+      {{ below > 0 and has_value('sensor.letzfuel_ha_sp98_price')
+         and states('sensor.letzfuel_ha_sp98_price') | float < below }}
+
+trigger_variables:
+  below: !input threshold_below
+  reminder_times: !input reminder_times
+
+variables:
+  # --- input aliases (!input cannot be used inside a template) ---
+  notify_language: !input notify_language
+  reminder_enabled: !input reminder_enabled
+  reminder_devices: !input reminder_devices
+  reminder_zones: !input reminder_zones
+  reminder_level_entity: !input reminder_level_entity
+  reminder_level_below: !input reminder_level_below
+  reminder_done_helper: !input reminder_done_helper
+  reminder_snooze_minutes: !input reminder_snooze_minutes
+  reminder_priority: !input reminder_priority
+  reminder_title: !input reminder_title
+  reminder_message: !input reminder_message
+  reminder_actions: !input reminder_actions
+  nav_mode: !input nav_mode
+  nav_place: !input nav_place
+  nav_app: !input nav_app
+  events_fuels: !input events_fuels
+  events_min_delta: !input events_min_delta
+  announced_actions: !input announced_actions
+  effective_actions: !input effective_actions
+  rec_states: !input rec_states
+  rec_actions: !input rec_actions
+  threshold_below: !input threshold_below
+  threshold_actions: !input threshold_actions
+
+  # --- computed ---
+  #: Same entity as the `recommend` trigger; triggers are evaluated before
+  #: `variables:`, so the trigger can't reference this.
+  rec_entity: sensor.letzfuel_ha_refuel_recommendation
+  primary_fuel: "{{ state_attr(rec_entity, 'primary_fuel') or 'diesel' }}"
+  #: The selected fuels, with "primary" resolved.
+  wanted_fuels: >-
+    {% set ns = namespace(v=[]) %}
+    {% for f in events_fuels %}
+      {% set ns.v = ns.v + ([primary_fuel] if f == 'primary' else [f]) %}
+    {% endfor %}
+    {{ ns.v | unique | list }}
+  #: The Companion app names its legacy notify service after the device's
+  #: notify entity: notify.<slug> -> notify.mobile_app_<slug>.
+  notify_services: >-
+    {% set ns = namespace(v=[]) %}
+    {% for d in (reminder_devices or []) %}
+      {% for eid in device_entities(d) %}
+        {% if eid.startswith('notify.') %}
+          {% set ns.v = ns.v + ['mobile_app_' ~ eid.split('.')[1]] %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    {{ ns.v | unique | list }}
+  #: Built-in texts per language; `notify_language` picks one, falling back to
+  #: English.
+  strings: >-
+    {% set d = {
+      'en': {
+        'announced_title': 'Price change tomorrow',
+        'corrected_title': 'Correction: announced price',
+        'no_change': 'no change',
+        'instead_of': 'instead of',
+        'effective_title': 'New fuel price in effect',
+        'rec_title': 'Refuel recommendation',
+        'rec_states': {'refuel_today': 'Refuel today', 'wait': 'Wait', 'no_change': 'No change', 'awaiting_price': 'Awaiting new price'},
+        'threshold_title': 'Price below your target',
+        'threshold_message': '{name} is at {price} €/L (target: below {target})',
+        'reminder_line': '{fuel}: {today} €/L today, {tomorrow} €/L tomorrow ({change})',
+        'reminder_saving': 'A full tank saves about {saving} €',
+        'saving_wait': 'A full tank tomorrow saves about {saving} €',
+        'btn_done': 'Refuelled',
+        'btn_later': 'Later',
+        'btn_nav': 'Navigate',
+        'decimal': '.',
+      },
+      'de': {
+        'announced_title': 'Preisänderung morgen',
+        'corrected_title': 'Korrektur: angekündigter Preis',
+        'no_change': 'unverändert',
+        'instead_of': 'statt',
+        'effective_title': 'Neuer Preis in Kraft',
+        'rec_title': 'Tankempfehlung',
+        'rec_states': {'refuel_today': 'Heute tanken', 'wait': 'Warten', 'no_change': 'Keine Änderung', 'awaiting_price': 'Neuen Preis abwarten'},
+        'threshold_title': 'Preis unter Zielwert',
+        'threshold_message': '{name} liegt bei {price} €/L (Ziel: unter {target})',
+        'reminder_line': '{fuel}: heute {today} €/L, morgen {tomorrow} €/L ({change})',
+        'reminder_saving': 'Volltanken spart etwa {saving} €',
+        'saving_wait': 'Morgen volltanken spart etwa {saving} €',
+        'btn_done': 'Getankt',
+        'btn_later': 'Später',
+        'btn_nav': 'Navigation',
+        'decimal': ',',
+      },
+      'fr': {
+        'announced_title': 'Changement de prix demain',
+        'corrected_title': 'Correction : prix annoncé',
+        'no_change': 'inchangé',
+        'instead_of': 'au lieu de',
+        'effective_title': 'Nouveau prix en vigueur',
+        'rec_title': 'Recommandation de plein',
+        'rec_states': {'refuel_today': "Faire le plein aujourd'hui", 'wait': 'Attendre', 'no_change': 'Pas de changement', 'awaiting_price': 'En attente du nouveau prix'},
+        'threshold_title': 'Prix sous votre seuil',
+        'threshold_message': '{name} est à {price} €/L (seuil : en dessous de {target})',
+        'reminder_line': "{fuel} : {today} €/L aujourd'hui, {tomorrow} €/L demain ({change})",
+        'reminder_saving': "Un plein complet fait économiser environ {saving} €",
+        'saving_wait': 'Un plein complet demain fait économiser environ {saving} €',
+        'btn_done': 'Plein fait',
+        'btn_later': 'Plus tard',
+        'btn_nav': 'Itinéraire',
+        'decimal': ',',
+      },
+      'lb': {
+        'announced_title': 'Präisännerung muer',
+        'corrected_title': 'Korrektur: ugekënnegte Präis',
+        'no_change': 'onverännert',
+        'instead_of': 'amplaz',
+        'effective_title': 'Neie Präis ab elo',
+        'rec_title': 'Tankempfeelung',
+        'rec_states': {'refuel_today': 'Haut tanken', 'wait': 'Waarden', 'no_change': 'Keng Ännerung', 'awaiting_price': 'Waarden op en neie Präis'},
+        'threshold_title': 'Präis ënner Zilwert',
+        'threshold_message': '{name} läit bei {price} €/L (Zilwert: ënner {target})',
+        'reminder_line': '{fuel}: haut {today} €/L, muer {tomorrow} €/L ({change})',
+        'reminder_saving': 'Voll tanke spuert ongeféier {saving} €',
+        'saving_wait': 'Muer voll tanke spuert ongeféier {saving} €',
+        'btn_done': 'Getankt',
+        'btn_later': 'Méi spéit',
+        'btn_nav': 'Navigatioun',
+        'decimal': ',',
+      },
+      'pt': {
+        'announced_title': 'Alteração de preço amanhã',
+        'corrected_title': 'Correção: preço anunciado',
+        'no_change': 'sem alteração',
+        'instead_of': 'em vez de',
+        'effective_title': 'Novo preço em vigor',
+        'rec_title': 'Recomendação de abastecimento',
+        'rec_states': {'refuel_today': 'Abastecer hoje', 'wait': 'Aguardar', 'no_change': 'Sem alteração', 'awaiting_price': 'A aguardar novo preço'},
+        'threshold_title': 'Preço abaixo do seu limite',
+        'threshold_message': '{name} está a {price} €/L (limite: abaixo de {target})',
+        'reminder_line': '{fuel}: hoje {today} €/L, amanhã {tomorrow} €/L ({change})',
+        'reminder_saving': 'Encher o depósito poupa cerca de {saving} €',
+        'saving_wait': 'Encher o depósito amanhã poupa cerca de {saving} €',
+        'btn_done': 'Abastecido',
+        'btn_later': 'Mais tarde',
+        'btn_nav': 'Navegar',
+        'decimal': ',',
+      },
+      'it': {
+        'announced_title': 'Variazione di prezzo domani',
+        'corrected_title': 'Correzione: prezzo annunciato',
+        'no_change': 'invariato',
+        'instead_of': 'invece di',
+        'effective_title': 'Nuovo prezzo in vigore',
+        'rec_title': 'Raccomandazione di rifornimento',
+        'rec_states': {'refuel_today': 'Fai rifornimento oggi', 'wait': 'Attendi', 'no_change': 'Nessuna variazione', 'awaiting_price': 'In attesa del nuovo prezzo'},
+        'threshold_title': 'Prezzo sotto la tua soglia',
+        'threshold_message': '{name} è a {price} €/L (soglia: sotto {target})',
+        'reminder_line': '{fuel}: oggi {today} €/L, domani {tomorrow} €/L ({change})',
+        'reminder_saving': 'Un pieno fa risparmiare circa {saving} €',
+        'saving_wait': 'Un pieno domani fa risparmiare circa {saving} €',
+        'btn_done': 'Rifornito',
+        'btn_later': 'Più tardi',
+        'btn_nav': 'Naviga',
+        'decimal': ',',
+      },
+    } %}
+    {{ d.get(notify_language, d['en']) }}
+
+  # --- refuel reminder ---
+  helper_entity: "{{ reminder_done_helper if reminder_done_helper is string else '' }}"
+  level_entity: "{{ reminder_level_entity if reminder_level_entity is string else '' }}"
+  #: The place names a person or tracker has as its state while inside a zone.
+  zone_names: >-
+    {% set ns = namespace(v=[]) %}
+    {% for z in (reminder_zones or []) %}
+      {% set ns.v = ns.v + ['home' if z == 'zone.home' else (state_attr(z, 'friendly_name') or z)] %}
+    {% endfor %}
+    {{ ns.v }}
+  #: The occasion itself fits: really left one of the places, really started
+  #: moving, or a set time.
+  occasion_ok: >-
+    {% if trigger.id == 'leave' %}
+      {{ trigger.from_state is not none and trigger.to_state is not none
+         and trigger.from_state.state in zone_names
+         and trigger.to_state.state != trigger.from_state.state }}
+    {% else %}
+      {{ trigger.id in ['moving', 'time'] }}
+    {% endif %}
+  #: Navigate button, if one is set up.
+  nav_action: >-
+    {#- English works in every maps app, whatever its language. #}
+    {% set term = 'petrol station' | urlencode %}
+    {% set place = nav_place if nav_place is mapping else {} %}
+    {% set lat = place.get('latitude') %}
+    {% set lon = place.get('longitude') %}
+    {% if nav_mode == 'nearby' %}
+      {% set uri = {'google': 'https://www.google.com/maps/search/?api=1&query=' ~ term,
+                    'apple': 'https://maps.apple.com/?q=' ~ term,
+                    'waze': 'https://waze.com/ul?q=' ~ term}[nav_app] %}
+    {% elif nav_mode == 'place' and lat is not none and lon is not none %}
+      {% set ll = lat ~ ',' ~ lon %}
+      {% set uri = {'google': 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' ~ ll,
+                    'apple': 'https://maps.apple.com/?dirflg=d&daddr=' ~ ll,
+                    'waze': 'https://waze.com/ul?navigate=yes&ll=' ~ ll}[nav_app] %}
+    {% else %}
+      {% set uri = '' %}
+    {% endif %}
+    {{ {'action': 'URI', 'title': strings.btn_nav, 'uri': uri} if uri != '' else {} }}
+
+actions:
+  # ---------- Housekeeping around "Refuel today" ----------
+  - choose:
+      # A new "Refuel today" starts: the helper from the last one is reset.
+      - conditions:
+          - "{{ trigger.id == 'recommend' and reminder_enabled and helper_entity != '' }}"
+          - "{{ trigger.to_state.state == 'refuel_today' and trigger.from_state.state != 'refuel_today' }}"
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: "{{ helper_entity }}"
+      # "Refuel today" is over: the reminder on the phones goes.
+      - conditions:
+          - "{{ trigger.id == 'recommend' and reminder_enabled }}"
+          - "{{ trigger.from_state.state == 'refuel_today' and trigger.to_state.state != 'refuel_today' }}"
+        sequence:
+          - repeat:
+              for_each: "{{ notify_services }}"
+              sequence:
+                - action: "notify.{{ repeat.item }}"
+                  data:
+                    message: clear_notification
+                    data:
+                      tag: letzfuel_reminder
+
+  # ---------- Own actions on the integration's events ----------
+  - choose:
+      - conditions:
+          - "{{ trigger.id in ['announced', 'effective'] }}"
+          - "{{ (announced_actions if trigger.id == 'announced' else effective_actions) | length > 0 }}"
+        sequence:
+          - variables:
+              notification_type: "{{ trigger.id }}"
+              changes: >-
+                {% set out = namespace(v=[]) %}
+                {% for c in trigger.event.data.get('changes', []) %}
+                  {% set new_p = (c.upcoming_price if c.upcoming_price is defined else c.new_price) | float(0) %}
+                  {% set old_p = (c.current_price if c.current_price is defined else c.old_price) | float(0) %}
+                  {% set d = new_p - old_p %}
+                  {% set dp = c.effective_date.split('-') %}
+                  {% if c.fuel in wanted_fuels and (d | abs) >= events_min_delta | float(0) %}
+                    {% set out.v = out.v + [{
+                         'fuel': c.fuel, 'price': new_p, 'old_price': old_p, 'delta': d,
+                         'direction': 'up' if d > 0 else 'down', 'effective_date': c.effective_date,
+                         'price_str': ('%.3f' | format(new_p)).replace('.', strings.decimal),
+                         'delta_str': ('+' if d > 0 else '-') ~ (((d | abs) * 100) | round(1) | string).replace('.', strings.decimal),
+                         'date_str': dp[2] ~ '/' ~ dp[1] ~ '/' ~ dp[0] }] %}
+                  {% endif %}
+                {% endfor %}
+                {{ out.v }}
+              title: "{{ strings.announced_title if trigger.id == 'announced' else strings.effective_title }}"
+              message: >-
+                {% set lines = namespace(v=[]) %}
+                {%- for c in changes %}
+                {%- if trigger.id == 'announced' %}
+                {%- set lines.v = lines.v + [(c.fuel | upper) ~ ': ' ~ c.delta_str ~ ' ct/L → ' ~ c.price_str ~ ' €/L (' ~ c.date_str ~ ')'] %}
+                {%- else %}
+                {%- set lines.v = lines.v + [(c.fuel | upper) ~ ': ' ~ c.price_str ~ ' €/L (' ~ c.delta_str ~ ' ct/L)'] %}
+                {%- endif %}
+                {%- endfor %}
+                {{ lines.v | join('\n') }}
+          - condition: template
+            value_template: "{{ changes | count > 0 }}"
+          - if: "{{ trigger.id == 'announced' }}"
+            then: !input announced_actions
+            else: !input effective_actions
+
+      - conditions:
+          - "{{ trigger.id == 'corrected' and announced_actions | length > 0 }}"
+        sequence:
+          - variables:
+              notification_type: corrected
+              changes: >-
+                {% set out = namespace(v=[]) %}
+                {% for c in trigger.event.data.get('changes', []) %}
+                  {% set base = c.current_price | float(0) %}
+                  {% set ann = c.announced_price | float(0) %}
+                  {% set new_p = c.corrected_price | float(0) %}
+                  {% set d = new_p - base %}
+                  {% set dp = c.effective_date.split('-') %}
+                  {% if c.fuel in wanted_fuels and ((ann - base) | abs) >= events_min_delta | float(0) %}
+                    {% set out.v = out.v + [{
+                         'fuel': c.fuel, 'price': new_p, 'announced_price': ann, 'effective_date': c.effective_date,
+                         'price_str': ('%.3f' | format(new_p)).replace('.', strings.decimal),
+                         'announced_str': ('%.3f' | format(ann)).replace('.', strings.decimal),
+                         'change_str': strings.no_change if (d | abs) < 0.0005
+                           else (('+' if d > 0 else '-') ~ (((d | abs) * 100) | round(1) | string).replace('.', strings.decimal) ~ ' ct/L'),
+                         'date_str': dp[2] ~ '/' ~ dp[1] ~ '/' ~ dp[0] }] %}
+                  {% endif %}
+                {% endfor %}
+                {{ out.v }}
+              title: "{{ strings.corrected_title }}"
+              message: >-
+                {% set lines = namespace(v=[]) %}
+                {%- for c in changes %}
+                {%- set lines.v = lines.v + [(c.fuel | upper) ~ ': ' ~ c.price_str ~ ' €/L (' ~ c.change_str ~ ') ' ~ strings.instead_of ~ ' ' ~ c.announced_str ~ ' €/L (' ~ c.date_str ~ ')'] %}
+                {%- endfor %}
+                {{ lines.v | join('\n') }}
+          - condition: template
+            value_template: "{{ changes | count > 0 }}"
+          - sequence: !input announced_actions
+
+      - conditions:
+          - "{{ trigger.id == 'recommend' and rec_actions | length > 0 }}"
+          - "{{ trigger.to_state.state in rec_states and trigger.from_state.state != trigger.to_state.state }}"
+        sequence:
+          - variables:
+              notification_type: recommendation
+              recommendation: "{{ trigger.to_state.state }}"
+              title: "{{ strings.rec_title }}"
+              #: Like the integration's own notification: with a tank size, a
+              #: saving line for "Refuel today" and "Wait".
+              message: >-
+                {% set text = strings.rec_states.get(recommendation, recommendation) %}
+                {% set saving = trigger.to_state.attributes.get('potential_saving_full_tank') %}
+                {% if recommendation in ['refuel_today', 'wait'] and saving is number and saving > 0 %}
+                  {% set line = strings.reminder_saving if recommendation == 'refuel_today' else strings.saving_wait %}
+                  {{ text ~ '\n' ~ line | replace('{saving}', ('%.2f' | format(saving)).replace('.', strings.decimal)) }}
+                {% else %}
+                  {{ text }}
+                {% endif %}
+          - sequence: !input rec_actions
+
+      - conditions:
+          # `in` instead of startswith(): a manual run has no trigger.id.
+          - "{{ trigger.id in ['threshold_diesel', 'threshold_sp95', 'threshold_sp98'] and threshold_actions | length > 0 }}"
+          - "{{ trigger.id.replace('threshold_', '') in wanted_fuels }}"
+        sequence:
+          - variables:
+              notification_type: threshold
+              fuel: "{{ trigger.id.replace('threshold_', '') }}"
+              price_entity: >-
+                {{ {'diesel': 'sensor.letzfuel_ha_diesel_price',
+                    'sp95': 'sensor.letzfuel_ha_sp95_e10_price',
+                    'sp98': 'sensor.letzfuel_ha_sp98_price'}[fuel] }}
+              price: "{{ states(price_entity) | float(0) }}"
+              title: "{{ strings.threshold_title }}"
+              message: >-
+                {{ strings.threshold_message
+                   | replace('{name}', {'diesel': 'Diesel', 'sp95': 'SP95 (E10)', 'sp98': 'SP98'}[fuel])
+                   | replace('{price}', ('%.3f' | format(price)).replace('.', strings.decimal))
+                   | replace('{target}', ('%.3f' | format(threshold_below | float)).replace('.', strings.decimal)) }}
+          - sequence: !input threshold_actions
+
+  # ---------- Refuel reminder ----------
+  # Last, because it waits for the buttons until midnight.
+  - choose:
+      - conditions:
+          - "{{ reminder_enabled and trigger.id in ['leave', 'moving', 'time'] }}"
+          - "{{ occasion_ok }}"
+          - "{{ is_state(rec_entity, 'refuel_today') }}"
+          - "{{ helper_entity == '' or not is_state(helper_entity, 'on') }}"
+          - "{{ level_entity == '' or not has_value(level_entity) or states(level_entity) | float(0) < reminder_level_below | float(100) }}"
+        sequence:
+          - variables:
+              notification_type: reminder
+              values: >-
+                {% set today = state_attr(rec_entity, 'today_price') %}
+                {% set tomorrow = state_attr(rec_entity, 'tomorrow_price') %}
+                {% set saving = state_attr(rec_entity, 'potential_saving_full_tank') %}
+                {% set dec = strings.decimal %}
+                {{ {
+                  'fuel': primary_fuel | upper,
+                  'today': ('%.3f' | format(today | float)).replace('.', dec) if today is number else '',
+                  'tomorrow': ('%.3f' | format(tomorrow | float)).replace('.', dec) if tomorrow is number else '',
+                  'change': (('+' if (tomorrow - today) > 0 else '-') ~ ((((tomorrow - today) | abs) * 100) | round(1) | string).replace('.', dec) ~ ' ct/L')
+                            if today is number and tomorrow is number else '',
+                  'saving': ('%.2f' | format(saving | float)).replace('.', dec) if saving is number and saving > 0 else '',
+                } }}
+              title: "{{ reminder_title if reminder_title | trim != '' else strings.rec_states.refuel_today }}"
+              message: >-
+                {% set ns = namespace(t='') %}
+                {% if reminder_message | trim != '' %}
+                  {% set ns.t = reminder_message %}
+                {% elif values.today != '' and values.tomorrow != '' %}
+                  {% set ns.t = strings.reminder_line %}
+                  {% if values.saving != '' %}
+                    {% set ns.t = ns.t ~ '\n' ~ strings.reminder_saving %}
+                  {% endif %}
+                {% else %}
+                  {% set ns.t = strings.rec_states.refuel_today %}
+                {% endif %}
+                {% for k, v in values.items() %}
+                  {% set ns.t = ns.t | replace('{' ~ k ~ '}', v) %}
+                {% endfor %}
+                {{ ns.t }}
+              #: Unique per run, so a button only answers its own reminder.
+              run_id: "{{ (as_timestamp(now()) * 1000) | int }}_{{ range(100000) | random }}"
+              done_id: "LETZFUEL_DONE_{{ run_id }}"
+              later_id: "LETZFUEL_LATER_{{ run_id }}"
+              buttons: >-
+                {% set b = [{'action': done_id, 'title': strings.btn_done}] %}
+                {% if reminder_snooze_minutes | int(0) > 0 %}
+                  {% set b = b + [{'action': later_id, 'title': strings.btn_later}] %}
+                {% endif %}
+                {% if nav_action != {} %}
+                  {% set b = b + [nav_action] %}
+                {% endif %}
+                {{ b }}
+              notification_data: >-
+                {% set base = {'tag': 'letzfuel_reminder', 'group': 'letzfuel_ha', 'icon_url': '/letzfuel_ha/icon.png',
+                    'push': {'thread-id': 'letzfuel_ha'}, 'actions': buttons,
+                    'entity_id': rec_entity, 'clickAction': 'entityId:' ~ rec_entity} %}
+                {% if reminder_priority == 'elevated' %}
+                {% set base = base | combine({'importance': 'high', 'priority': 'high', 'ttl': 0,
+                    'push': {'interruption-level': 'time-sensitive'}}, recursive=True) %}
+                {% elif reminder_priority == 'critical' %}
+                {% set base = base | combine({'channel': 'alarm_stream', 'importance': 'high', 'priority': 'high', 'ttl': 0,
+                    'push': {'interruption-level': 'critical', 'sound': {'name': 'default', 'critical': 1, 'volume': 1.0}}}, recursive=True) %}
+                {% endif %}
+                {{ base }}
+          - if: "{{ reminder_actions | length > 0 }}"
+            then: !input reminder_actions
+          # Without a phone there is no button to wait for.
+          - condition: template
+            value_template: "{{ notify_services | count > 0 }}"
+          - repeat:
+              sequence:
+                - repeat:
+                    for_each: "{{ notify_services }}"
+                    sequence:
+                      - action: "notify.{{ repeat.item }}"
+                        data:
+                          title: "{{ title }}"
+                          message: "{{ message }}"
+                          data: "{{ notification_data }}"
+                - wait_for_trigger:
+                    - trigger: event
+                      event_type: mobile_app_notification_action
+                      event_data:
+                        action: "{{ done_id }}"
+                    - trigger: event
+                      event_type: mobile_app_notification_action
+                      event_data:
+                        action: "{{ later_id }}"
+                  #: Until midnight, when the price changes anyway.
+                  timeout: "{{ ((today_at('00:00') + timedelta(days=1)) - now()).total_seconds() | int }}"
+                  continue_on_timeout: true
+                - if: "{{ wait.trigger is not none and wait.trigger.event.data.action == done_id }}"
+                  then:
+                    - if: "{{ helper_entity != '' }}"
+                      then:
+                        - action: input_boolean.turn_on
+                          target:
+                            entity_id: "{{ helper_entity }}"
+                    - repeat:
+                        for_each: "{{ notify_services }}"
+                        sequence:
+                          - action: "notify.{{ repeat.item }}"
+                            data:
+                              message: clear_notification
+                              data:
+                                tag: letzfuel_reminder
+                - if: "{{ wait.trigger is not none and wait.trigger.event.data.action == later_id }}"
+                  then:
+                    - delay:
+                        minutes: "{{ reminder_snooze_minutes | int }}"
+              until:
+                - >-
+                  {{ wait.trigger is none
+                     or wait.trigger.event.data.action != later_id
+                     or not is_state(rec_entity, 'refuel_today')
+                     or (helper_entity != '' and is_state(helper_entity, 'on'))
+                     or (level_entity != '' and has_value(level_entity)
+                         and states(level_entity) | float(0) >= reminder_level_below | float(100))
+                     or repeat.index >= 10 }}

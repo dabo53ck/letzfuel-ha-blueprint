@@ -1,0 +1,8 @@
+# Local development only. CI installs its own pins per matrix entry
+# (.github/workflows/tests.yml); the minimum Home Assistant version is covered
+# there, so this file just tracks a workable recent set.
+# Home Assistant does not run on native Windows: use Linux, macOS, WSL or a container.
+homeassistant
+pytest-homeassistant-custom-component
+pyyaml
+yamllint
