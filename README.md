@@ -1,8 +1,12 @@
 # LëtzFuel HA Blueprint
 
-[![Version](https://img.shields.io/github/v/release/dabo53ck/letzfuel-ha-blueprint?label=version)](https://github.com/dabo53ck/letzfuel-ha-blueprint/releases)
-[![Validate](https://github.com/dabo53ck/letzfuel-ha-blueprint/actions/workflows/validate.yml/badge.svg)](https://github.com/dabo53ck/letzfuel-ha-blueprint/actions/workflows/validate.yml)
-[![Tests](https://github.com/dabo53ck/letzfuel-ha-blueprint/actions/workflows/tests.yml/badge.svg)](https://github.com/dabo53ck/letzfuel-ha-blueprint/actions/workflows/tests.yml)
+<div align="center">
+
+[![Version](https://img.shields.io/github/v/release/dabo53ck/letzfuel-ha-blueprint?label=version)](https://github.com/dabo53ck/letzfuel-ha-blueprint/releases) &nbsp; [![Validate](https://github.com/dabo53ck/letzfuel-ha-blueprint/actions/workflows/validate.yml/badge.svg)](https://github.com/dabo53ck/letzfuel-ha-blueprint/actions/workflows/validate.yml) &nbsp; [![Tests](https://github.com/dabo53ck/letzfuel-ha-blueprint/actions/workflows/tests.yml/badge.svg)](https://github.com/dabo53ck/letzfuel-ha-blueprint/actions/workflows/tests.yml)
+
+[Requirements](#requirements) · [Install](#install) · [Refuel reminder](#refuel-reminder) · [Navigate button](#navigate-button) · [Own actions](#own-actions) · [Language](#language) · [Troubleshooting](#troubleshooting) · [Versioning](#versioning) · [Issues](#issues)
+
+</div>
 
 A Home Assistant blueprint for the
 [LëtzFuel HA](https://github.com/dabo53ck/letzfuel-ha-luxembourg-fuel-monitor)
@@ -13,6 +17,13 @@ integration. It adds what the integration's own notifications don't do:
   with the buttons *Refuelled*, *Later* and *Navigate*.
 - **Own actions** on the integration's events: Telegram, a script, a light,
   anything an automation can do.
+
+> [!WARNING]
+> This blueprint replaces the old *LëtzFuel HA - Notifications* blueprint. Its
+> inputs differ, so it is not a drop-in update: for the integration's
+> notifications, add a **recipient** in LëtzFuel HA 0.2.0 and turn your old
+> automation off; for a refuel reminder or own actions, import this blueprint
+> and create a new automation.
 
 > [!TIP]
 > For the standard phone notifications (price announced, new price in effect,
@@ -26,28 +37,18 @@ integration. It adds what the integration's own notifications don't do:
 > This blueprint was written with [Claude](https://claude.ai) (AI-assisted)
 > and is reviewed and tested by the maintainer on a live Home Assistant instance.
 
-- [Requirements](#requirements)
-- [Install](#install)
-- [Refuel reminder](#refuel-reminder)
-- [Navigate button](#navigate-button)
-- [Own actions](#own-actions)
-- [Language](#language)
-- [Troubleshooting](#troubleshooting)
-- [Versioning](#versioning)
-- [Issues](#issues)
-- [License](#license)
-
----
-
 ## Requirements
 
 - Home Assistant **2026.7** or newer.
 - [LëtzFuel HA](https://github.com/dabo53ck/letzfuel-ha-luxembourg-fuel-monitor)
-  **0.1.1** or newer; **0.2.0** or newer for its built-in notifications
-  (*Add recipient*).
+  **0.1.1** or newer.
 - For the reminder: the
   [Home Assistant Companion app](https://companion.home-assistant.io/) on the
   phones or tablets that should get it.
+
+> [!IMPORTANT]
+> The integration's own phone notifications (*Add recipient*) need LëtzFuel HA
+> **0.2.0** or newer. The blueprint itself works from 0.1.1.
 
 ## Install
 
@@ -121,14 +122,18 @@ for *Later* (`notification_type` is `reminder`, plus `title` and `message`).
 | **Later** | Reminds again after **Later button delay** (default 60 min), as long as it is still "Refuel today", you haven't refuelled and the tank is still below the level. At most 10 reminders per occasion in total. `0` = no button. |
 | **Navigate** | See [below](#navigate-button). |
 
-The reminder disappears from the phones on its own once the recommendation
-moves on (normally just after midnight). Tapping it opens the refuel
+> [!NOTE]
+> The reminder disappears from the phones on its own once the recommendation
+> moves on (normally just after midnight).
+
+Tapping it opens the refuel
 recommendation. **Priority** works like the integration's: *Elevated* is
 time-sensitive, *Critical* bypasses Do Not Disturb.
 
-The buttons are answered by the running automation, until midnight. After a
-Home Assistant restart, or once the automation is reloaded or edited,
-*Refuelled* and *Later* of an open reminder do nothing any more.
+> [!IMPORTANT]
+> The buttons are answered by the running automation, until midnight. After a
+> Home Assistant restart, or once the automation is reloaded or edited,
+> *Refuelled* and *Later* of an open reminder do nothing any more.
 
 ## Navigate button
 
@@ -193,8 +198,11 @@ Example, send the announcements to Telegram:
 
 **Language** picks the reminder text, its buttons and the built-in `title` and
 `message` of the own actions: English, German, French, Lëtzebuergesch,
-Português or Italiano. The blueprint's input labels always stay English,
-because Home Assistant can't translate a blueprint's own UI.
+Português or Italiano.
+
+> [!NOTE]
+> The blueprint's input labels always stay English, because Home Assistant
+> can't translate a blueprint's own UI.
 
 ## Troubleshooting
 
