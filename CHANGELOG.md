@@ -4,7 +4,7 @@ All notable changes to this blueprint are documented here. The format loosely
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions follow
 [SemVer](https://semver.org/).
 
-## [v0.1.0] - unreleased
+## [v0.1.0] - 2026-10-18
 
 First release.
 
