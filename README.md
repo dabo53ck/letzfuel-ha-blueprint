@@ -27,9 +27,10 @@ integration. It adds what the integration's own notifications don't do:
 
 > [!TIP]
 > For the standard phone notifications (price announced, new price in effect,
-> refuel recommendation, live countdown, price threshold) use the integration
-> itself (LëtzFuel HA 0.2.0 or newer): Settings → Devices and services →
-> LëtzFuel HA → **Add recipient**.
+> refuel recommendation, price threshold and a live countdown as iOS Live
+> Activity or Android Live Update) use the integration itself (LëtzFuel HA
+> 0.2.0 or newer): Settings → Devices and services → LëtzFuel HA →
+> **Add recipient**.
 
 > [!NOTE]
 > **Not affiliated** with the GPL, petrol.lu, any other data source or the
