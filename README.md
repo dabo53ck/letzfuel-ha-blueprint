@@ -19,16 +19,17 @@ integration. It adds what the integration's own notifications don't do:
   anything an automation can do.
 
 > [!WARNING]
-> This blueprint replaces the old *LëtzFuel HA - Notifications* blueprint. Its
-> inputs differ, so it is not a drop-in update: for the integration's
-> notifications, add a **recipient** in LëtzFuel HA 0.2.0 and turn your old
-> automation off; for a refuel reminder or own actions, import this blueprint
+> This blueprint replaces the old *LëtzFuel HA - Notifications* blueprint and
+> is not a drop-in update, because its inputs differ. For the integration's
+> notifications, add a **recipient** (LëtzFuel HA 0.2.0) and turn your old
+> automation off. For a refuel reminder or own actions, import this blueprint
 > and create a new automation.
 
 > [!TIP]
 > For the standard phone notifications (price announced, new price in effect,
 > refuel recommendation, live countdown, price threshold) use the integration
-> itself: Settings → Devices and services → LëtzFuel HA → **Add recipient**.
+> itself (LëtzFuel HA 0.2.0 or newer): Settings → Devices and services →
+> LëtzFuel HA → **Add recipient**.
 
 > [!NOTE]
 > **Not affiliated** with the GPL, petrol.lu, any other data source or the
@@ -45,10 +46,6 @@ integration. It adds what the integration's own notifications don't do:
 - For the reminder: the
   [Home Assistant Companion app](https://companion.home-assistant.io/) on the
   phones or tablets that should get it.
-
-> [!IMPORTANT]
-> The integration's own phone notifications (*Add recipient*) need LëtzFuel HA
-> **0.2.0** or newer. The blueprint itself works from 0.1.1.
 
 ## Install
 
@@ -110,8 +107,8 @@ A full tank saves about 2.71 €
 
 The saving line needs a tank size in the integration's options. **Own title**
 and **Own message** replace the built-in texts; the message can use `{fuel}`,
-`{today}`, `{tomorrow}`, `{change}` and `{saving}`. **Own actions** in this
-section run once per occasion, before the first notification and not again
+`{today}`, `{tomorrow}`, `{change}` and `{saving}`. The reminder's **Own
+actions** run once per occasion, before the first notification and not again
 for *Later* (`notification_type` is `reminder`, plus `title` and `message`).
 
 **The buttons.**
@@ -122,13 +119,13 @@ for *Later* (`notification_type` is `reminder`, plus `title` and `message`).
 | **Later** | Reminds again after **Later button delay** (default 60 min), as long as it is still "Refuel today", you haven't refuelled and the tank is still below the level. At most 10 reminders per occasion in total. `0` = no button. |
 | **Navigate** | See [below](#navigate-button). |
 
+Tapping the notification opens the refuel recommendation. **Priority** works
+like the integration's: *Elevated* is time-sensitive, *Critical* bypasses Do
+Not Disturb.
+
 > [!NOTE]
 > The reminder disappears from the phones on its own once the recommendation
 > moves on (normally just after midnight).
-
-Tapping it opens the refuel
-recommendation. **Priority** works like the integration's: *Elevated* is
-time-sensitive, *Critical* bypasses Do Not Disturb.
 
 > [!IMPORTANT]
 > The buttons are answered by the running automation, until midnight. After a
@@ -165,8 +162,9 @@ yourself.
 **Fuels** (default: the primary fuel) filters the price events and the target;
 **Minimum change** (default 0) only filters the price events. A price event
 without a matching fuel runs nothing.
-`title` and `message` are the built-in texts, for example
-`DIESEL: +4.3 ct/L → 2.100 €/L (02/10/2026)`. For "Refuel today" and "Wait"
+
+`title` and `message` are the built-in texts. For `announced`, for example:
+`DIESEL: +4.3 ct/L → 2.100 €/L (02/10/2026)` (dd/mm/yyyy). For "Refuel today" and "Wait"
 the recommendation's `message` adds the saving of a full tank, like the
 integration's own notification (needs a tank size in the integration):
 
@@ -182,8 +180,9 @@ A full tank tomorrow saves about 3.91 €
 | `announced`, `effective` | `fuel`, `price`, `old_price`, `delta`, `direction`, `effective_date`, and as text `price_str`, `delta_str`, `date_str` |
 | `corrected` | `fuel`, `price`, `announced_price`, `effective_date`, and as text `price_str`, `announced_str`, `change_str`, `date_str` |
 
-Prices and `delta` are numbers in €/L; `delta_str` is in ct/L. For `corrected`,
-`price` is the corrected price.
+Prices and `delta` are numbers in €/L. `delta_str` is in ct/L without the
+unit, for example `+4.3`; `change_str` includes it, for example `+4.3 ct/L`.
+For `corrected`, `price` is the corrected price.
 
 Example, send the announcements to Telegram:
 
