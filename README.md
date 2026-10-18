@@ -19,6 +19,13 @@ integration. It adds what the integration's own notifications don't do:
 > refuel recommendation, live countdown, price threshold) use the integration
 > itself: Settings → Devices and services → LëtzFuel HA → **Add recipient**.
 
+> [!NOTE]
+> **Not affiliated** with the GPL, petrol.lu, any other data source or the
+> Luxembourg government. Always verify the price at the pump.
+>
+> This blueprint was written with [Claude](https://claude.ai) (AI-assisted)
+> and is reviewed and tested by the maintainer on a live Home Assistant instance.
+
 - [Requirements](#requirements)
 - [Install](#install)
 - [Refuel reminder](#refuel-reminder)
