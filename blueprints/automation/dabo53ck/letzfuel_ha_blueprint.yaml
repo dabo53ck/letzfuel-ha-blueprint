@@ -1,7 +1,7 @@
 blueprint:
   name: LëtzFuel HA Blueprint
   description: >-
-    ![Version](https://img.shields.io/badge/version-v0.1.0-blue) &nbsp;&nbsp;&nbsp; [![GitHub](https://img.shields.io/badge/GitHub-Repository-black)](https://github.com/dabo53ck/letzfuel-ha-blueprint) &nbsp;&nbsp;&nbsp; [![Issues](https://img.shields.io/badge/Issues-red)](https://github.com/dabo53ck/letzfuel-ha-blueprint/issues)
+    ![Version](https://img.shields.io/badge/version-v0.1.1-blue) &nbsp;&nbsp;&nbsp; [![GitHub](https://img.shields.io/badge/GitHub-Repository-black)](https://github.com/dabo53ck/letzfuel-ha-blueprint) &nbsp;&nbsp;&nbsp; [![Issues](https://img.shields.io/badge/Issues-red)](https://github.com/dabo53ck/letzfuel-ha-blueprint/issues)
 
 
     Adds what the [LëtzFuel HA](https://github.com/dabo53ck/letzfuel-ha-luxembourg-fuel-monitor)
@@ -416,16 +416,17 @@ variables:
       {% set ns.v = ns.v + ([primary_fuel] if f == 'primary' else [f]) %}
     {% endfor %}
     {{ ns.v | unique | list }}
-  #: The Companion app names its legacy notify service after the device's
-  #: notify entity: notify.<slug> -> notify.mobile_app_<slug>.
+  #: The Companion app names its legacy notify service after the name the
+  #: device registered with: notify. + slugify("mobile_app_" + name). Not the
+  #: notify entity id and not a name given to the device, both can be renamed.
+  #: Only devices with push support have a notify entity and the service.
   notify_services: >-
     {% set ns = namespace(v=[]) %}
     {% for d in (reminder_devices or []) %}
-      {% for eid in device_entities(d) %}
-        {% if eid.startswith('notify.') %}
-          {% set ns.v = ns.v + ['mobile_app_' ~ eid.split('.')[1]] %}
-        {% endif %}
-      {% endfor %}
+      {% set registered_name = device_attr(d, 'name') %}
+      {% if registered_name and device_entities(d) | select('match', 'notify\\.') | list %}
+        {% set ns.v = ns.v + [('mobile_app_' ~ registered_name) | slugify] %}
+      {% endif %}
     {% endfor %}
     {{ ns.v | unique | list }}
   #: Built-in texts per language; `notify_language` picks one, falling back to

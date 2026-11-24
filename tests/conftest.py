@@ -19,6 +19,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
+from homeassistant.util import slugify
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_mock_service,
@@ -105,11 +106,20 @@ class Fuel:
         )
         await settle(self.hass)
 
-    def add_phone(self, name: str) -> str:
+    def add_phone(
+        self,
+        name: str,
+        *,
+        object_id: str | None = None,
+        name_by_user: str | None = None,
+    ) -> str:
         """Register a Companion app device and return its device id.
 
-        The app names its notify entity after the device (`notify.<name>`) and
-        the legacy service `notify.mobile_app_<name>`.
+        The app registers the device under ``name`` and names the legacy
+        service after it: ``notify.`` + slugify("mobile_app_" + name). The
+        notify entity is called after the device too, but it can be renamed
+        (``object_id``), and so can the device (``name_by_user``); neither
+        changes the service.
         """
         entry = MockConfigEntry(domain="mobile_app", title=name)
         entry.add_to_hass(self.hass)
@@ -118,16 +128,20 @@ class Fuel:
             identifiers={("mobile_app", name)},
             name=name,
         )
+        if name_by_user is not None:
+            dr.async_get(self.hass).async_update_device(
+                device.id, name_by_user=name_by_user
+            )
         er.async_get(self.hass).async_get_or_create(
             "notify",
             "mobile_app",
             f"{name}-notify",
             config_entry=entry,
             device_id=device.id,
-            suggested_object_id=name,
+            suggested_object_id=object_id or slugify(name),
         )
         self.calls.phones[name] = async_mock_service(
-            self.hass, "notify", f"mobile_app_{name}"
+            self.hass, "notify", slugify(f"mobile_app_{name}")
         )
         return device.id
 
