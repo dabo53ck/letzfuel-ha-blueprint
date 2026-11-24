@@ -265,6 +265,23 @@ class TestReminder:
         titles = [button["title"] for button in data["data"]["actions"]]
         assert titles == ["Getankt", "Später"]
 
+    async def test_renamed_notify_entity(
+        self, setup_blueprint: Any, fuel: Fuel
+    ) -> None:
+        """The service follows the registered device name, not the entity id."""
+        phone = fuel.add_phone(
+            "Pixel 9", object_id="car_phone", name_by_user="My phone"
+        )
+        await setup_blueprint(
+            reminder_enabled=True, reminder_devices=[phone], **LEAVE_HOME
+        )
+        await fuel.recommend("refuel_today")
+
+        await fuel.state(PERSON, "not_home")
+
+        assert len(fuel.calls.phones["Pixel 9"]) == 1
+        assert fuel.calls.phones["Pixel 9"][0].data["title"] == "Refuel today"
+
     async def test_no_device_no_waiting(
         self, hass: HomeAssistant, setup_blueprint: Any, fuel: Fuel
     ) -> None:

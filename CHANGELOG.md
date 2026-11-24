@@ -4,6 +4,15 @@ All notable changes to this blueprint are documented here. The format loosely
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions follow
 [SemVer](https://semver.org/).
 
+## [v0.1.1] - 2026-11-24
+
+### Fixed
+
+- The refuel reminder reaches a phone again after its notify entity was
+  renamed. The blueprint now finds the Companion app's notify service through
+  the name the device registered with, not through the entity ID
+  ([#1](https://github.com/dabo53ck/letzfuel-ha-blueprint/issues/1)).
+
 ## [v0.1.0] - 2026-10-18
 
 First release.
