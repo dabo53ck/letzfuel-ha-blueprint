@@ -15,13 +15,14 @@
       reminder_zones: [zone.home, zone.work]
       reminder_moving: [binary_sensor.car_moving]
       reminder_times: "07:30, 16:45"
+      reminder_price_dropped: true
       reminder_level_entity: sensor.car_fuel_level
       reminder_level_below: 40
       reminder_done_helper: input_boolean.refuelled_today
       reminder_snooze_minutes: 45
       reminder_priority: elevated
       reminder_title: Fuel
-      reminder_message: "{fuel}: {today} / {tomorrow} ({change}), {saving} €"
+      reminder_message: "{fuel}: {today} / {tomorrow} / {previous} ({change}), {saving} €, {drops}"
       reminder_actions:
         - action: persistent_notification.create
           data:
@@ -41,7 +42,7 @@
         - action: persistent_notification.create
           data:
             message: "{{ message }}"
-      rec_states: [refuel_today, wait, no_change]
+      rec_states: [refuel_today, wait, no_change, price_dropped]
       rec_actions:
         - action: persistent_notification.create
           data:

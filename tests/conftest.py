@@ -93,7 +93,12 @@ class Fuel:
         await settle(self.hass)
 
     async def recommend(self, value: str) -> None:
-        await self.state(RECOMMENDATION, value, REC_ATTRIBUTES)
+        """Set the recommendation, with the attributes the integration gives it.
+
+        On a price-drop day there is no price for tomorrow yet.
+        """
+        attributes = DROPPED_ATTRIBUTES if value == "price_dropped" else REC_ATTRIBUTES
+        await self.state(RECOMMENDATION, value, attributes)
 
     async def press(self, action: str) -> None:
         """Tap a notification button."""
@@ -152,6 +157,22 @@ REC_ATTRIBUTES = {
     "tomorrow_price": 2.1,
     "delta": 0.043,
     "potential_saving_full_tank": 2.71,
+    "previous_price": 2.057,
+    "price_drop": None,
+    "drops_in_a_row": 0,
+}
+
+#: The morning after a price drop: today's price is lower than the one before
+#: and tomorrow's is not known yet.
+DROPPED_ATTRIBUTES = {
+    "primary_fuel": "diesel",
+    "today_price": 1.839,
+    "tomorrow_price": None,
+    "delta": None,
+    "potential_saving_full_tank": None,
+    "previous_price": 1.904,
+    "price_drop": 0.065,
+    "drops_in_a_row": 5,
 }
 
 

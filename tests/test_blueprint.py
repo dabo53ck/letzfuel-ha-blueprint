@@ -457,6 +457,38 @@ class TestOwnActions:
             },
         ]
 
+    async def test_recommendation_price_dropped(
+        self, setup_blueprint: Any, fuel: Fuel
+    ) -> None:
+        await setup_blueprint(rec_actions=CUSTOM, rec_states=["price_dropped"])
+
+        await fuel.recommend("wait")
+        await fuel.recommend("price_dropped")
+
+        assert [call.data for call in fuel.calls.custom] == [
+            {
+                "type": "recommendation",
+                "title": "Refuel recommendation",
+                "message": "Price dropped today\nDIESEL: 1.839 €/L (-6.5 ct/L)\nPrice drops in a row: 5",
+            }
+        ]
+
+    async def test_recommendation_price_dropped_german(
+        self, setup_blueprint: Any, fuel: Fuel
+    ) -> None:
+        await setup_blueprint(
+            rec_actions=CUSTOM, rec_states=["price_dropped"], notify_language="de"
+        )
+
+        await fuel.recommend("wait")
+        await fuel.recommend("price_dropped")
+
+        assert fuel.calls.custom[0].data["message"].split("\n") == [
+            "Preis heute gesunken",
+            "DIESEL: 1,839 €/L (-6,5 ct/L)",
+            "Preissenkungen in Folge: 5",
+        ]
+
     async def test_threshold(self, setup_blueprint: Any, fuel: Fuel) -> None:
         await setup_blueprint(threshold_actions=CUSTOM, threshold_below=2.0)
 
@@ -467,3 +499,121 @@ class TestOwnActions:
             "title": "Price below your target",
             "message": "Diesel is at 1.950 €/L (target: below 2.000)",
         }
+
+
+DROPPED_ON = {"reminder_enabled": True, "reminder_price_dropped": True}
+
+
+class TestReminderOnAPriceDropDay:
+    async def test_off_by_default(self, setup_blueprint: Any, fuel: Fuel) -> None:
+        await setup_blueprint(reminder_enabled=True, **LEAVE_HOME)
+        await fuel.recommend("price_dropped")
+
+        await fuel.state(PERSON, "not_home")
+
+        assert fuel.calls.notify == []
+
+    async def test_leaving_a_place(self, setup_blueprint: Any, fuel: Fuel) -> None:
+        await setup_blueprint(**DROPPED_ON, **LEAVE_HOME)
+        await fuel.recommend("price_dropped")
+
+        await fuel.state(PERSON, "not_home")
+
+        assert len(fuel.calls.notify) == 1
+        data = fuel.calls.notify[0].data
+        assert data["title"] == "Price dropped today"
+        assert data["message"].split("\n") == [
+            "DIESEL: 1.839 €/L (-6.5 ct/L)",
+            "Price drops in a row: 5",
+        ]
+        titles = [button["title"] for button in data["data"]["actions"]]
+        assert titles == ["Refuelled", "Later"]
+
+    async def test_own_message_and_actions(
+        self, setup_blueprint: Any, fuel: Fuel
+    ) -> None:
+        await setup_blueprint(
+            **DROPPED_ON,
+            **LEAVE_HOME,
+            reminder_message="{fuel} {today} {previous} {change} {drops}",
+            reminder_actions=[
+                {"action": "test.custom", "data": {"rec": "{{ recommendation }}"}}
+            ],
+        )
+        await fuel.recommend("price_dropped")
+
+        await fuel.state(PERSON, "not_home")
+
+        assert fuel.calls.notify[0].data["message"] == "DIESEL 1.839 1.904 -6.5 ct/L 5"
+        assert fuel.calls.custom[0].data == {"rec": "price_dropped"}
+
+    @pytest.mark.parametrize("expected_lingering_timers", [True])
+    async def test_set_times_stay_quiet(
+        self, hass: HomeAssistant, setup_blueprint: Any, fuel: Fuel, freezer: Any
+    ) -> None:
+        """At set times the integration's own morning reminder does the job."""
+        at = (dt_util.now() + timedelta(minutes=2)).replace(second=0, microsecond=0)
+        await setup_blueprint(**DROPPED_ON, reminder_times=at.strftime("%H:%M"))
+        await fuel.recommend("price_dropped")
+
+        freezer.move_to(at)
+        async_fire_time_changed(hass, at)
+        await settle(hass)
+
+        assert fuel.calls.notify == []
+
+    async def test_helper_resets_when_a_drop_day_starts(
+        self, setup_blueprint: Any, fuel: Fuel
+    ) -> None:
+        await setup_blueprint(**DROPPED_ON, reminder_done_helper=DONE)
+        await fuel.recommend("wait")
+
+        await fuel.recommend("price_dropped")
+
+        assert [call.data["entity_id"] for call in fuel.calls.helper_off] == [[DONE]]
+
+    async def test_refuelled_in_the_morning_counts_for_the_evening(
+        self, setup_blueprint: Any, fuel: Fuel
+    ) -> None:
+        await setup_blueprint(**DROPPED_ON, reminder_done_helper=DONE, **LEAVE_HOME)
+        await fuel.recommend("price_dropped")
+        fuel.calls.helper_off.clear()
+
+        await fuel.recommend("refuel_today")
+
+        assert fuel.calls.helper_off == []
+
+    async def test_reminder_goes_when_the_drop_day_ends(
+        self, setup_blueprint: Any, fuel: Fuel
+    ) -> None:
+        await setup_blueprint(**DROPPED_ON, **LEAVE_HOME)
+        await fuel.recommend("price_dropped")
+        await fuel.state(PERSON, "not_home")
+
+        await fuel.recommend("wait")
+
+        assert fuel.calls.notify[-1].data["message"] == "clear_notification"
+        assert fuel.calls.notify[-1].data["data"]["tag"] == "letzfuel_reminder"
+
+    @pytest.mark.parametrize("expected_lingering_timers", [True])
+    async def test_later_ends_with_the_drop_day(
+        self, hass: HomeAssistant, setup_blueprint: Any, fuel: Fuel, freezer: Any
+    ) -> None:
+        await setup_blueprint(**DROPPED_ON, reminder_snooze_minutes=30, **LEAVE_HOME)
+        await fuel.recommend("price_dropped")
+        await fuel.state(PERSON, "not_home")
+        later = fuel.calls.notify[0].data["data"]["actions"][1]["action"]
+        await fuel.press(later)
+
+        await fuel.recommend("refuel_today")
+        sent = [
+            c for c in fuel.calls.notify if c.data["message"] != "clear_notification"
+        ]
+        freezer.tick(timedelta(minutes=31))
+        async_fire_time_changed(hass)
+        await settle(hass)
+
+        after = [
+            c for c in fuel.calls.notify if c.data["message"] != "clear_notification"
+        ]
+        assert after == sent

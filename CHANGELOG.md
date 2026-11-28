@@ -4,6 +4,29 @@ All notable changes to this blueprint are documented here. The format loosely
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions follow
 [SemVer](https://semver.org/).
 
+## [v0.2.0-rc.1] - 2026-11-28
+
+Release candidate. Needs LëtzFuel HA 0.3.0 or newer (pre-release
+[v0.3.0-rc.1](https://github.com/dabo53ck/letzfuel-ha-luxembourg-fuel-monitor/releases/tag/v0.3.0-rc.1)).
+
+### Added
+
+- **Reminder on a price-drop day** (*Also on a price-drop day*, off by
+  default): reminds you while the recommendation is "Price dropped today",
+  when leaving a place or when the car starts moving. Not at set times: the
+  morning reminder at a set time comes from LëtzFuel HA. The message shows
+  today's price, the drop and, from 3 in a row, the number of drops. New
+  placeholders `{previous}` and `{drops}`, and the variable `recommendation`
+  in the reminder's own actions.
+- **Recommendation changed** can also run on "Price dropped today"; its
+  `message` shows today's price, the drop and the drops in a row.
+
+### Changed
+
+- The refuelled-today helper turns off when a new reminder day starts, not
+  when a price-drop day turns into "Refuel today": refuelled in the morning
+  counts for the evening.
+
 ## [v0.1.1] - 2026-11-24
 
 ### Fixed

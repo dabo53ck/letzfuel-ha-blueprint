@@ -12,9 +12,10 @@ A Home Assistant blueprint for the
 [LëtzFuel HA](https://github.com/dabo53ck/letzfuel-ha-luxembourg-fuel-monitor)
 integration. It adds what the integration's own notifications don't do:
 
-- **Refuel reminder**: while the recommendation is "Refuel today", a reminder
-  when it matters (leaving a place, the car starting to move, set times),
-  with the buttons *Refuelled*, *Later* and *Navigate*.
+- **Refuel reminder**: while the recommendation is "Refuel today" (and, if
+  you like, on a day the price dropped), a reminder when it matters (leaving
+  a place, the car starting to move, set times), with the buttons
+  *Refuelled*, *Later* and *Navigate*.
 - **Own actions** on the integration's events: Telegram, a script, a light,
   anything an automation can do.
 
@@ -43,7 +44,7 @@ integration. It adds what the integration's own notifications don't do:
 
 - Home Assistant **2026.7** or newer.
 - [LëtzFuel HA](https://github.com/dabo53ck/letzfuel-ha-luxembourg-fuel-monitor)
-  **0.1.1** or newer.
+  **0.3.0** or newer.
 - For the reminder: the
   [Home Assistant Companion app](https://companion.home-assistant.io/) on the
   phones or tablets that should get it.
@@ -82,8 +83,8 @@ with the Companion app that get it. Without a device no reminder is sent (own
 actions still run).
 
 **When it reminds you.** Only while the recommendation is "Refuel today",
-which is from the evening the next-day price is announced until midnight, on
-any of these occasions:
+which is from the evening the next-day price is announced until midnight
+(or on a price-drop day, see below), on any of these occasions:
 
 | Input | Example |
 | --- | --- |
@@ -91,12 +92,21 @@ any of these occasions:
 | **When the car starts moving** | A binary sensor of your car integration that turns on while driving or with the ignition on. |
 | **At these times** | `19:00, 21:30`: evening times work for everyone who is at home by then. |
 
+**On a price-drop day.** With **Also on a price-drop day** the reminder also
+comes while the recommendation is "Price dropped today": the price went down
+at midnight and tomorrow's price is not known yet (usually until the evening).
+It comes when leaving a place or when the car starts moving, not at set
+times: for a reminder at a set time in the morning, turn on the one in
+LëtzFuel HA's notification recipients. Once the day turns into "Wait" or
+"No change", the reminder goes. If it turns into "Refuel today" the same
+evening, *Refuelled* from the morning still counts.
+
 **When it stays quiet.**
 
 | Input | Effect |
 | --- | --- |
 | **Only when the tank is low** and **Tank level below** (default 50 %) | A fuel level in percent, ideally your car's own sensor: once you have refuelled, the level is up and the reminders stop on their own. The integration's `number.letzfuel_ha_current_fuel_level` works too (it exists with a tank size and a manual fuel level), but you have to set it yourself after refuelling. Without a value the reminder comes anyway. |
-| **Refuelled-today helper** | The *Toggle* helper from [Install](#install) step 4. *Refuelled* turns it on and no reminder comes for the rest of the day; it turns off again when the next "Refuel today" starts. Without it and without a fuel level, every occasion reminds you again. |
+| **Refuelled-today helper** | The *Toggle* helper from [Install](#install) step 4. *Refuelled* turns it on and no reminder comes for the rest of the day; it turns off again when the next reminder day starts ("Refuel today", or a price-drop day if you turned that on). Without it and without a fuel level, every occasion reminds you again. |
 
 **The message**, for example:
 
@@ -106,18 +116,31 @@ DIESEL: 2.057 €/L today, 2.100 €/L tomorrow (+4.3 ct/L)
 A full tank saves about 2.71 €
 ```
 
-The saving line needs a tank size in the integration's options. **Own title**
-and **Own message** replace the built-in texts; the message can use `{fuel}`,
-`{today}`, `{tomorrow}`, `{change}` and `{saving}`. The reminder's **Own
-actions** run once per occasion, before the first notification and not again
-for *Later* (`notification_type` is `reminder`, plus `title` and `message`).
+On a price-drop day, today's price, the drop since the price before and,
+from 3 in a row, the number of drops:
+
+```
+Price dropped today
+DIESEL: 1.839 €/L (-6.5 ct/L)
+Price drops in a row: 5
+```
+
+The saving line needs a tank size in the integration's options; on a
+price-drop day there is none. **Own title** and **Own message** replace the
+built-in texts; the message can use `{fuel}`, `{today}`, `{tomorrow}`,
+`{change}` and `{saving}`, and on a price-drop day `{previous}` (the price
+before today), `{change}` (the drop since then) and `{drops}` (drops in a
+row). The reminder's **Own actions** run once per occasion, before the first
+notification and not again for *Later* (`notification_type` is `reminder`,
+`recommendation` is `refuel_today` or `price_dropped`, plus `title` and
+`message`).
 
 **The buttons.**
 
 | Button | What it does |
 | --- | --- |
 | **Refuelled** | Removes the reminder from the phones and, with the helper, ends the reminders for the day. |
-| **Later** | Reminds again after **Later button delay** (default 60 min), as long as it is still "Refuel today", you haven't refuelled and the tank is still below the level. At most 10 reminders per occasion in total. `0` = no button. |
+| **Later** | Reminds again after **Later button delay** (default 60 min), as long as it is still "Refuel today" (or still the price-drop day), you haven't refuelled and the tank is still below the level. At most 10 reminders per occasion in total. `0` = no button. |
 | **Navigate** | See [below](#navigate-button). |
 
 Tapping the notification opens the refuel recommendation. **Priority** works
@@ -157,7 +180,7 @@ yourself.
 | --- | --- | --- |
 | Price announced for tomorrow (and its corrections) | a next-day price is published (`announced`), or later corrected (`corrected`) | `changes` |
 | New price in effect | a new price applies, just after midnight (`effective`) | `changes` |
-| Recommendation changed | the recommendation changes to one of the states in **Recommendation changed: to these states** (Refuel today, Wait, No change; default Refuel today) (`recommendation`) | `recommendation` |
+| Recommendation changed | the recommendation changes to one of the states in **Recommendation changed: to these states** (Refuel today, Wait, No change, Price dropped today; default Refuel today) (`recommendation`) | `recommendation` |
 | Price below the target | a price drops below **Price below: target** (`threshold`, 0 = off); once, and again only after it has gone back above it or the price sensor was briefly unavailable (for example after a restart) | `fuel`, `price` |
 
 **Fuels** (default: the primary fuel) filters the price events and the target;
@@ -172,6 +195,15 @@ integration's own notification (needs a tank size in the integration):
 ```
 Wait
 A full tank tomorrow saves about 3.91 €
+```
+
+For "Price dropped today" it adds today's price, the drop and, from 3 in a
+row, the number of drops, like the integration:
+
+```
+Price dropped today
+DIESEL: 1.839 €/L (-6.5 ct/L)
+Price drops in a row: 5
 ```
 
 `changes` is a list with one entry per fuel:
@@ -208,9 +240,9 @@ Português or Italiano.
 
 | Symptom | Cause / fix |
 | --- | --- |
-| No reminder | It is not "Refuel today" (no price rise announced for tomorrow yet, or it is after midnight), the tank is above the level you set, the helper is on, or the occasion didn't match (you left a place you didn't pick, or arrived somewhere). The automation trace shows which condition stopped it (⋮ → Traces). |
+| No reminder | It is not "Refuel today" (no price rise announced for tomorrow yet, or it is after midnight) and not a price-drop day with **Also on a price-drop day** on, the tank is above the level you set, the helper is on, or the occasion didn't match (you left a place you didn't pick, or arrived somewhere; set times only count on "Refuel today"). No "Price dropped today" at all: the drop was smaller than the minimum difference in LëtzFuel HA's options. The automation trace shows which condition stopped it (⋮ → Traces). |
 | Reminders keep coming after refuelling | Set a fuel level or the refuelled-today helper, see [Refuel reminder](#refuel-reminder). |
-| *Later* never comes back | Home Assistant restarted or the automation was reloaded or edited in between, it is no longer "Refuel today", the tank is above the level, or it already reminded 10 times. |
+| *Later* never comes back | Home Assistant restarted or the automation was reloaded or edited in between, it is no longer "Refuel today" (or the price-drop day), the tank is above the level, or it already reminded 10 times. |
 | Own actions never run | **Fuels** or **Minimum change** filtered the event out, the new recommendation is not one of the states you picked, or the target price is 0. Check the events in Developer tools → Events (`letzfuel_ha_price_change_announced`, `letzfuel_ha_price_change_corrected`, `letzfuel_ha_price_changed`). |
 | Nothing at all, not even own actions | The integration's entities were renamed. The blueprint uses their entity IDs as LëtzFuel HA creates them (`sensor.letzfuel_ha_refuel_recommendation`, `sensor.letzfuel_ha_diesel_price`, `…_sp95_e10_price`, `…_sp98_price`). |
 | Every notification arrives twice | You still have an automation from the old *LëtzFuel HA - Notifications* blueprint (LëtzFuel HA 0.1.2 and earlier) next to the integration's recipients. Turn it off; LëtzFuel HA 0.2.0 shows a repair issue for it. |

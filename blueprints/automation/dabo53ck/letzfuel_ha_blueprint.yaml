@@ -1,17 +1,18 @@
 blueprint:
   name: LëtzFuel HA Blueprint
   description: >-
-    ![Version](https://img.shields.io/badge/version-v0.1.1-blue) &nbsp;&nbsp;&nbsp; [![GitHub](https://img.shields.io/badge/GitHub-Repository-black)](https://github.com/dabo53ck/letzfuel-ha-blueprint) &nbsp;&nbsp;&nbsp; [![Issues](https://img.shields.io/badge/Issues-red)](https://github.com/dabo53ck/letzfuel-ha-blueprint/issues)
+    ![Version](https://img.shields.io/badge/version-v0.2.0--rc.1-blue) &nbsp;&nbsp;&nbsp; [![GitHub](https://img.shields.io/badge/GitHub-Repository-black)](https://github.com/dabo53ck/letzfuel-ha-blueprint) &nbsp;&nbsp;&nbsp; [![Issues](https://img.shields.io/badge/Issues-red)](https://github.com/dabo53ck/letzfuel-ha-blueprint/issues)
 
 
     Adds what the [LëtzFuel HA](https://github.com/dabo53ck/letzfuel-ha-luxembourg-fuel-monitor)
-    integration's own notifications don't do. Needs LëtzFuel HA 0.1.1 or
+    integration's own notifications don't do. Needs LëtzFuel HA 0.3.0 or
     newer.
 
 
-    **Refuel reminder**: while the recommendation is "Refuel today", remind
-    you when it matters: when you leave a place, when the car starts moving
-    or at set times, with the buttons *Refuelled*, *Later* and *Navigate*.
+    **Refuel reminder**: while the recommendation is "Refuel today" (and, if
+    you like, on a day the price dropped), remind you when it matters: when
+    you leave a place, when the car starts moving or at set times, with the
+    buttons *Refuelled*, *Later* and *Navigate*.
 
 
     **Own actions**: run any actions (Telegram, a script, a light) on the
@@ -59,7 +60,8 @@ blueprint:
           name: Enable
           description: >-
             Reminds you while the refuel recommendation is "Refuel today", on
-            the occasions below. Pick at least one.
+            the occasions below. Pick at least one. For a price-drop day, see
+            *Also on a price-drop day*.
           default: false
           selector:
             boolean: {}
@@ -107,10 +109,23 @@ blueprint:
           description: >-
             Times as HH:MM, separated by commas, for example `19:00, 21:30`.
             "Refuel today" only runs from the evening announcement until
-            midnight, so evening times make sense. Leave empty for none.
+            midnight, so evening times make sense. Only on "Refuel today",
+            not on a price-drop day. Leave empty for none.
           default: ""
           selector:
             text: {}
+        reminder_price_dropped:
+          name: Also on a price-drop day
+          description: >-
+            Also remind on a day the price went down ("Price dropped today",
+            from midnight until tomorrow's price is known, usually in the
+            evening), when leaving a place or when the car starts moving,
+            not at set times: a morning reminder at a set time is something
+            LëtzFuel HA sends itself. The message shows today's price and
+            the drop. Once the day turns into "Wait", the reminder goes.
+          default: false
+          selector:
+            boolean: {}
         reminder_level_entity:
           name: Only when the tank is low (optional)
           description: >-
@@ -140,8 +155,10 @@ blueprint:
             A Toggle helper (`input_boolean`) you create yourself under
             Settings → Devices and services → Helpers. *Refuelled* turns it on and
             stops the reminders for the day; it turns off again when the next
-            "Refuel today" starts. Without it and without a fuel level,
-            every occasion above reminds you again.
+            reminder day starts ("Refuel today", or a price-drop day if you
+            turned that on). Refuelled on a price-drop day also counts for a
+            "Refuel today" the same evening. Without it and without a fuel
+            level, every occasion above reminds you again.
           default: []
           selector:
             entity:
@@ -177,7 +194,11 @@ blueprint:
           name: Own message (optional)
           description: >-
             Leave empty for the built-in message. Placeholders: `{fuel}`,
-            `{today}`, `{tomorrow}`, `{change}`, `{saving}`.
+            `{today}`, `{tomorrow}`, `{change}`, `{saving}`, and for a
+            price-drop day `{previous}` (the price before today) and
+            `{drops}` (price drops in a row). On a price-drop day `{change}`
+            is the drop since `{previous}`, and there is no `{tomorrow}` or
+            `{saving}`.
           default: ""
           selector:
             text:
@@ -187,7 +208,8 @@ blueprint:
           description: >-
             Run once per occasion, before the first notification, not again
             for *Later*. The variables `notification_type` (`reminder`),
-            `title` and `message` are available.
+            `recommendation` (`refuel_today` or `price_dropped`), `title` and
+            `message` are available.
           default: []
           selector:
             action: {}
@@ -281,6 +303,7 @@ blueprint:
                 - { label: Refuel today, value: refuel_today }
                 - { label: Wait, value: wait }
                 - { label: No change, value: no_change }
+                - { label: Price dropped today, value: price_dropped }
         rec_actions:
           name: Recommendation changed
           description: >-
@@ -382,6 +405,7 @@ variables:
   # --- input aliases (!input cannot be used inside a template) ---
   notify_language: !input notify_language
   reminder_enabled: !input reminder_enabled
+  reminder_price_dropped: !input reminder_price_dropped
   reminder_devices: !input reminder_devices
   reminder_zones: !input reminder_zones
   reminder_level_entity: !input reminder_level_entity
@@ -440,12 +464,13 @@ variables:
         'instead_of': 'instead of',
         'effective_title': 'New fuel price in effect',
         'rec_title': 'Refuel recommendation',
-        'rec_states': {'refuel_today': 'Refuel today', 'wait': 'Wait', 'no_change': 'No change', 'awaiting_price': 'Awaiting new price'},
+        'rec_states': {'refuel_today': 'Refuel today', 'wait': 'Wait', 'no_change': 'No change', 'awaiting_price': 'Awaiting new price', 'price_dropped': 'Price dropped today'},
         'threshold_title': 'Price below your target',
         'threshold_message': '{name} is at {price} €/L (target: below {target})',
         'reminder_line': '{fuel}: {today} €/L today, {tomorrow} €/L tomorrow ({change})',
         'reminder_saving': 'A full tank saves about {saving} €',
         'saving_wait': 'A full tank tomorrow saves about {saving} €',
+        'streak': 'Price drops in a row: {count}',
         'btn_done': 'Refuelled',
         'btn_later': 'Later',
         'btn_nav': 'Navigate',
@@ -458,12 +483,13 @@ variables:
         'instead_of': 'statt',
         'effective_title': 'Neuer Preis in Kraft',
         'rec_title': 'Tankempfehlung',
-        'rec_states': {'refuel_today': 'Heute tanken', 'wait': 'Warten', 'no_change': 'Keine Änderung', 'awaiting_price': 'Neuen Preis abwarten'},
+        'rec_states': {'refuel_today': 'Heute tanken', 'wait': 'Warten', 'no_change': 'Keine Änderung', 'awaiting_price': 'Neuen Preis abwarten', 'price_dropped': 'Preis heute gesunken'},
         'threshold_title': 'Preis unter Zielwert',
         'threshold_message': '{name} liegt bei {price} €/L (Ziel: unter {target})',
         'reminder_line': '{fuel}: heute {today} €/L, morgen {tomorrow} €/L ({change})',
         'reminder_saving': 'Volltanken spart etwa {saving} €',
         'saving_wait': 'Morgen volltanken spart etwa {saving} €',
+        'streak': 'Preissenkungen in Folge: {count}',
         'btn_done': 'Getankt',
         'btn_later': 'Später',
         'btn_nav': 'Navigation',
@@ -476,12 +502,13 @@ variables:
         'instead_of': 'au lieu de',
         'effective_title': 'Nouveau prix en vigueur',
         'rec_title': 'Recommandation de plein',
-        'rec_states': {'refuel_today': "Faire le plein aujourd'hui", 'wait': 'Attendre', 'no_change': 'Pas de changement', 'awaiting_price': 'En attente du nouveau prix'},
+        'rec_states': {'refuel_today': "Faire le plein aujourd'hui", 'wait': 'Attendre', 'no_change': 'Pas de changement', 'awaiting_price': 'En attente du nouveau prix', 'price_dropped': "Prix en baisse aujourd'hui"},
         'threshold_title': 'Prix sous votre seuil',
         'threshold_message': '{name} est à {price} €/L (seuil : en dessous de {target})',
         'reminder_line': "{fuel} : {today} €/L aujourd'hui, {tomorrow} €/L demain ({change})",
         'reminder_saving': "Un plein complet fait économiser environ {saving} €",
         'saving_wait': 'Un plein complet demain fait économiser environ {saving} €',
+        'streak': 'Baisses de prix consécutives : {count}',
         'btn_done': 'Plein fait',
         'btn_later': 'Plus tard',
         'btn_nav': 'Itinéraire',
@@ -494,12 +521,13 @@ variables:
         'instead_of': 'amplaz',
         'effective_title': 'Neie Präis ab elo',
         'rec_title': 'Tankempfeelung',
-        'rec_states': {'refuel_today': 'Haut tanken', 'wait': 'Waarden', 'no_change': 'Keng Ännerung', 'awaiting_price': 'Waarden op en neie Präis'},
+        'rec_states': {'refuel_today': 'Haut tanken', 'wait': 'Waarden', 'no_change': 'Keng Ännerung', 'awaiting_price': 'Waarden op en neie Präis', 'price_dropped': 'Präis haut gefall'},
         'threshold_title': 'Präis ënner Zilwert',
         'threshold_message': '{name} läit bei {price} €/L (Zilwert: ënner {target})',
         'reminder_line': '{fuel}: haut {today} €/L, muer {tomorrow} €/L ({change})',
         'reminder_saving': 'Voll tanke spuert ongeféier {saving} €',
         'saving_wait': 'Muer voll tanke spuert ongeféier {saving} €',
+        'streak': 'Präisreduktiounen hannerteneen: {count}',
         'btn_done': 'Getankt',
         'btn_later': 'Méi spéit',
         'btn_nav': 'Navigatioun',
@@ -512,12 +540,13 @@ variables:
         'instead_of': 'em vez de',
         'effective_title': 'Novo preço em vigor',
         'rec_title': 'Recomendação de abastecimento',
-        'rec_states': {'refuel_today': 'Abastecer hoje', 'wait': 'Aguardar', 'no_change': 'Sem alteração', 'awaiting_price': 'A aguardar novo preço'},
+        'rec_states': {'refuel_today': 'Abastecer hoje', 'wait': 'Aguardar', 'no_change': 'Sem alteração', 'awaiting_price': 'A aguardar novo preço', 'price_dropped': 'Preço desceu hoje'},
         'threshold_title': 'Preço abaixo do seu limite',
         'threshold_message': '{name} está a {price} €/L (limite: abaixo de {target})',
         'reminder_line': '{fuel}: hoje {today} €/L, amanhã {tomorrow} €/L ({change})',
         'reminder_saving': 'Encher o depósito poupa cerca de {saving} €',
         'saving_wait': 'Encher o depósito amanhã poupa cerca de {saving} €',
+        'streak': 'Descidas de preço seguidas: {count}',
         'btn_done': 'Abastecido',
         'btn_later': 'Mais tarde',
         'btn_nav': 'Navegar',
@@ -530,12 +559,13 @@ variables:
         'instead_of': 'invece di',
         'effective_title': 'Nuovo prezzo in vigore',
         'rec_title': 'Raccomandazione di rifornimento',
-        'rec_states': {'refuel_today': 'Fai rifornimento oggi', 'wait': 'Attendi', 'no_change': 'Nessuna variazione', 'awaiting_price': 'In attesa del nuovo prezzo'},
+        'rec_states': {'refuel_today': 'Fai rifornimento oggi', 'wait': 'Attendi', 'no_change': 'Nessuna variazione', 'awaiting_price': 'In attesa del nuovo prezzo', 'price_dropped': 'Prezzo sceso oggi'},
         'threshold_title': 'Prezzo sotto la tua soglia',
         'threshold_message': '{name} è a {price} €/L (soglia: sotto {target})',
         'reminder_line': '{fuel}: oggi {today} €/L, domani {tomorrow} €/L ({change})',
         'reminder_saving': 'Un pieno fa risparmiare circa {saving} €',
         'saving_wait': 'Un pieno domani fa risparmiare circa {saving} €',
+        'streak': 'Ribassi di prezzo consecutivi: {count}',
         'btn_done': 'Rifornito',
         'btn_later': 'Più tardi',
         'btn_nav': 'Naviga',
@@ -545,6 +575,9 @@ variables:
     {{ d.get(notify_language, d['en']) }}
 
   # --- refuel reminder ---
+  #: The recommendations that remind: "Refuel today", and "Price dropped
+  #: today" if turned on.
+  reminder_states: "{{ ['refuel_today'] + (['price_dropped'] if reminder_price_dropped else []) }}"
   helper_entity: "{{ reminder_done_helper if reminder_done_helper is string else '' }}"
   level_entity: "{{ reminder_level_entity if reminder_level_entity is string else '' }}"
   #: The place names a person or tracker has as its state while inside a zone.
@@ -555,14 +588,17 @@ variables:
     {% endfor %}
     {{ ns.v }}
   #: The occasion itself fits: really left one of the places, really started
-  #: moving, or a set time.
+  #: moving, or a set time while it is "Refuel today" (not on a price-drop
+  #: day: the integration sends its own morning reminder).
   occasion_ok: >-
     {% if trigger.id == 'leave' %}
       {{ trigger.from_state is not none and trigger.to_state is not none
          and trigger.from_state.state in zone_names
          and trigger.to_state.state != trigger.from_state.state }}
+    {% elif trigger.id == 'time' %}
+      {{ is_state(rec_entity, 'refuel_today') }}
     {% else %}
-      {{ trigger.id in ['moving', 'time'] }}
+      {{ trigger.id == 'moving' }}
     {% endif %}
   #: Navigate button, if one is set up.
   nav_action: >-
@@ -588,18 +624,21 @@ variables:
 actions:
   # ---------- Housekeeping around "Refuel today" ----------
   - choose:
-      # A new "Refuel today" starts: the helper from the last one is reset.
+      # A new reminder day starts: the helper from the last one is reset. Not
+      # when a price-drop day turns into "Refuel today": refuelled is
+      # refuelled for the whole day.
       - conditions:
           - "{{ trigger.id == 'recommend' and reminder_enabled and helper_entity != '' }}"
-          - "{{ trigger.to_state.state == 'refuel_today' and trigger.from_state.state != 'refuel_today' }}"
+          - "{{ trigger.to_state.state in reminder_states and trigger.from_state.state not in reminder_states }}"
         sequence:
           - action: input_boolean.turn_off
             target:
               entity_id: "{{ helper_entity }}"
-      # "Refuel today" is over: the reminder on the phones goes.
+      # The recommendation a reminder was for is over: the reminder on the
+      # phones goes.
       - conditions:
           - "{{ trigger.id == 'recommend' and reminder_enabled }}"
-          - "{{ trigger.from_state.state == 'refuel_today' and trigger.to_state.state != 'refuel_today' }}"
+          - "{{ trigger.from_state.state in reminder_states and trigger.to_state.state != trigger.from_state.state }}"
         sequence:
           - repeat:
               for_each: "{{ notify_services }}"
@@ -696,16 +735,30 @@ actions:
               recommendation: "{{ trigger.to_state.state }}"
               title: "{{ strings.rec_title }}"
               #: Like the integration's own notification: with a tank size, a
-              #: saving line for "Refuel today" and "Wait".
+              #: saving line for "Refuel today" and "Wait"; on a price-drop
+              #: day today's price, the drop and, from 3, the drops in a row.
               message: >-
-                {% set text = strings.rec_states.get(recommendation, recommendation) %}
-                {% set saving = trigger.to_state.attributes.get('potential_saving_full_tank') %}
+                {% set a = trigger.to_state.attributes %}
+                {% set lines = namespace(v=[strings.rec_states.get(recommendation, recommendation)]) %}
+                {% set saving = a.get('potential_saving_full_tank') %}
                 {% if recommendation in ['refuel_today', 'wait'] and saving is number and saving > 0 %}
                   {% set line = strings.reminder_saving if recommendation == 'refuel_today' else strings.saving_wait %}
-                  {{ text ~ '\n' ~ line | replace('{saving}', ('%.2f' | format(saving)).replace('.', strings.decimal)) }}
-                {% else %}
-                  {{ text }}
+                  {% set lines.v = lines.v + [line | replace('{saving}', ('%.2f' | format(saving)).replace('.', strings.decimal))] %}
+                {% elif recommendation == 'price_dropped' %}
+                  {% set today = a.get('today_price') %}
+                  {% set previous = a.get('previous_price') %}
+                  {% set drops = a.get('drops_in_a_row') %}
+                  {% if today is number and previous is number %}
+                    {% set d = today - previous %}
+                    {% set lines.v = lines.v + [(a.get('primary_fuel') or primary_fuel) | upper ~ ': '
+                         ~ ('%.3f' | format(today)).replace('.', strings.decimal) ~ ' €/L ('
+                         ~ ('+' if d > 0 else '-') ~ (((d | abs) * 100) | round(1) | string).replace('.', strings.decimal) ~ ' ct/L)'] %}
+                  {% endif %}
+                  {% if drops is number and drops >= 3 %}
+                    {% set lines.v = lines.v + [strings.streak | replace('{count}', drops | string)] %}
+                  {% endif %}
                 {% endif %}
+                {{ lines.v | join('\n') }}
           - sequence: !input rec_actions
 
       - conditions:
@@ -735,30 +788,46 @@ actions:
       - conditions:
           - "{{ reminder_enabled and trigger.id in ['leave', 'moving', 'time'] }}"
           - "{{ occasion_ok }}"
-          - "{{ is_state(rec_entity, 'refuel_today') }}"
+          - "{{ states(rec_entity) in reminder_states }}"
           - "{{ helper_entity == '' or not is_state(helper_entity, 'on') }}"
           - "{{ level_entity == '' or not has_value(level_entity) or states(level_entity) | float(0) < reminder_level_below | float(100) }}"
         sequence:
           - variables:
               notification_type: reminder
+              #: What the reminder is for: `refuel_today` or `price_dropped`.
+              recommendation: "{{ states(rec_entity) }}"
               values: >-
                 {% set today = state_attr(rec_entity, 'today_price') %}
                 {% set tomorrow = state_attr(rec_entity, 'tomorrow_price') %}
+                {% set previous = state_attr(rec_entity, 'previous_price') %}
+                {% set drops = state_attr(rec_entity, 'drops_in_a_row') %}
                 {% set saving = state_attr(rec_entity, 'potential_saving_full_tank') %}
                 {% set dec = strings.decimal %}
+                {#- On a price-drop day the change is the drop since the price before. #}
+                {% set other = previous if recommendation == 'price_dropped' else tomorrow %}
+                {% set d = ((today - other) if recommendation == 'price_dropped' else (other - today)) if today is number and other is number else 0 %}
                 {{ {
                   'fuel': primary_fuel | upper,
                   'today': ('%.3f' | format(today | float)).replace('.', dec) if today is number else '',
                   'tomorrow': ('%.3f' | format(tomorrow | float)).replace('.', dec) if tomorrow is number else '',
-                  'change': (('+' if (tomorrow - today) > 0 else '-') ~ ((((tomorrow - today) | abs) * 100) | round(1) | string).replace('.', dec) ~ ' ct/L')
-                            if today is number and tomorrow is number else '',
+                  'previous': ('%.3f' | format(previous | float)).replace('.', dec) if previous is number else '',
+                  'change': (('+' if d > 0 else '-') ~ (((d | abs) * 100) | round(1) | string).replace('.', dec) ~ ' ct/L')
+                            if today is number and other is number else '',
                   'saving': ('%.2f' | format(saving | float)).replace('.', dec) if saving is number and saving > 0 else '',
+                  'drops': drops | string if drops is number else '',
                 } }}
-              title: "{{ reminder_title if reminder_title | trim != '' else strings.rec_states.refuel_today }}"
+              title: "{{ reminder_title if reminder_title | trim != '' else strings.rec_states.get(recommendation, strings.rec_states.refuel_today) }}"
               message: >-
                 {% set ns = namespace(t='') %}
                 {% if reminder_message | trim != '' %}
                   {% set ns.t = reminder_message %}
+                {% elif recommendation == 'price_dropped' and values.change != '' %}
+                  {% set ns.t = '{fuel}: {today} €/L ({change})' %}
+                  {% if values.drops != '' and values.drops | int(0) >= 3 %}
+                    {% set ns.t = ns.t ~ '\n' ~ strings.streak | replace('{count}', '{drops}') %}
+                  {% endif %}
+                {% elif recommendation == 'price_dropped' %}
+                  {% set ns.t = strings.rec_states.price_dropped %}
                 {% elif values.today != '' and values.tomorrow != '' %}
                   {% set ns.t = strings.reminder_line %}
                   {% if values.saving != '' %}
@@ -846,7 +915,7 @@ actions:
                 - >-
                   {{ wait.trigger is none
                      or wait.trigger.event.data.action != later_id
-                     or not is_state(rec_entity, 'refuel_today')
+                     or not is_state(rec_entity, recommendation)
                      or (helper_entity != '' and is_state(helper_entity, 'on'))
                      or (level_entity != '' and has_value(level_entity)
                          and states(level_entity) | float(0) >= reminder_level_below | float(100))
